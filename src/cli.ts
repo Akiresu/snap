@@ -126,8 +126,7 @@ async function main(): Promise<void> {
     );
 
     // Compare each page
-    const results: PageCompareResult[] = [];
-    for (const page of config.pages) {
+    const results: PageCompareResult[] = await Promise.all(config.pages.map(async (page) => {
       const basePath = path.join(baseDir, `${page.label}.png`);
       const snapshotPath = path.join(snapshotDir, `${page.label}.png`);
 
@@ -139,8 +138,7 @@ async function main(): Promise<void> {
       }
 
       if (baseBuffer === null) {
-        results.push({ label: page.label, percentage: 0, pass: true, skipped: true });
-        continue;
+        return { label: page.label, percentage: 0, pass: true, skipped: true };
       }
 
       let snapshotBuffer: Buffer;
@@ -148,9 +146,9 @@ async function main(): Promise<void> {
         snapshotBuffer = await readFile(snapshotPath);
       } catch {
         // snapshot file missing (capture failed for this page) — treat as 100% fail
-        results.push({ label: page.label, percentage: 100, pass: false, skipped: false });
-        continue;
+        return { label: page.label, percentage: 100, pass: false, skipped: false };
       }
+
       const { percentage, diffBuffer } = compareImages(baseBuffer, snapshotBuffer);
       const pass = percentage <= threshold;
 
@@ -158,8 +156,8 @@ async function main(): Promise<void> {
         await writeFile(path.join(diffDir, `${page.label}.png`), diffBuffer);
       }
 
-      results.push({ label: page.label, percentage, pass, skipped: false });
-    }
+      return { label: page.label, percentage, pass, skipped: false };
+    }));
 
     printResults(results, threshold);
     process.exit(getExitCode(results));

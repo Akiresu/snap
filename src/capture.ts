@@ -19,7 +19,7 @@ export async function captureBaseline(
     const outputDir = path.join('output', viewport, OUTPUT_DIRS.base);
     await mkdir(outputDir, { recursive: true });
 
-    for (const page of config.pages) {
+    await Promise.all(config.pages.map(async (page) => {
       const url = baseUrl + page.path;
       try {
         const buffer = await navigateAndScreenshot(context, url);
@@ -28,7 +28,7 @@ export async function captureBaseline(
       } catch (err) {
         onPageFailed(page.label, err instanceof Error ? err : new Error(String(err)));
       }
-    }
+    }));
   } finally {
     await browser.close();
   }
@@ -49,7 +49,7 @@ export async function captureSnapshot(
     const outputDir = path.join('output', viewport, OUTPUT_DIRS.snapshot);
     await mkdir(outputDir, { recursive: true });
 
-    for (const page of config.pages) {
+    await Promise.all(config.pages.map(async (page) => {
       const url = snapshotUrl + page.path;
       try {
         const buffer = await navigateAndScreenshot(context, url);
@@ -58,7 +58,7 @@ export async function captureSnapshot(
       } catch (err) {
         onPageFailed(page.label, err instanceof Error ? err : new Error(String(err)));
       }
-    }
+    }));
   } finally {
     await browser.close();
   }
