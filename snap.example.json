@@ -1,0 +1,6 @@
+{
+  "pages": [
+    { "path": "/", "label": "homepage" }
+  ],
+  "defaultThreshold": 5.0
+}
