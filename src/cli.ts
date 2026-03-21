@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { loadConfig } from './config.js';
+import { captureBaseline } from './capture.js';
 import { DEFAULT_THRESHOLD, DEFAULT_VIEWPORT, VIEWPORTS, type ViewportName } from './constants.js';
 
 const VALID_VIEWPORTS = Object.keys(VIEWPORTS) as ViewportName[];
@@ -57,18 +58,15 @@ async function main(): Promise<void> {
 
   const config = await loadConfig();
 
-  // Temporary verification output
-  console.log('Parsed arguments:');
-  console.log({
-    mode: opts.base ? 'base' : opts.compareTo ? 'cross-env-compare' : 'compare',
-    base: opts.base,
-    url: opts.url,
-    compareTo: opts.compareTo,
-    viewport: opts.viewport,
-    threshold,
-  });
-  console.log('\nLoaded config:');
-  console.log(config);
+  const viewport = opts.viewport as ViewportName;
+
+  if (opts.base) {
+    console.log(`\nSnap — capturing baseline (${viewport})\n`);
+    await captureBaseline(config, opts.base, viewport, (label) => {
+      console.log(`  ✓ ${label}`);
+    });
+    console.log(`\nBaseline saved: ${config.pages.length} pages`);
+  }
 }
 
 main().catch((err: unknown) => {

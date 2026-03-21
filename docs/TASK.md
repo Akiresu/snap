@@ -1,55 +1,62 @@
 # Snap — Implementation Tasks
 
-## Phase 1 — Docker + Scaffolding & CLI
+## Phase 2 — Screenshot Capture
 
-**Goal**: A containerized TypeScript CLI that parses and validates all arguments. No Playwright yet.
+**Goal**: `--base` mode captures full-page screenshots and saves them to the correct output folder.
+
+### Prerequisites
+- Phase 1 complete and working in Docker
 
 ### Steps
 
-1. Init Node.js/TypeScript project:
-    - `package.json` with dependencies: `playwright`, `pixelmatch`, `pngjs`, `commander`
-    - `@types/pngjs` as dev dependency
-    - `tsconfig.json` targeting ES2022, output to `dist/`
+1. Create `src/capture.ts` — screenshot capture module:
+    - Launch Chromium with `ignoreHTTPSErrors: true`
+    - Create browser context with the selected viewport preset
+    - Call the cookie placeholder before navigation (see step 2)
+    - For each page in config:
+        - Navigate to `baseUrl + page.path` with `waitUntil: 'networkidle'`
+        - Take full-page screenshot (`fullPage: true`)
+        - Save as `output/<viewport>/base/<label>.png`
+    - Close browser when done
 
-2. Create `snap.json` example config:
-   ```json
-   {
-     "pages": [
-       { "path": "/", "label": "homepage" }
-     ],
-     "defaultThreshold": 5.0
+2. Create `src/cookies.ts` — cookie placeholder:
+   ```typescript
+   import { BrowserContext } from 'playwright';
+
+   export async function setCookies(context: BrowserContext, baseUrl: string): Promise<void> {
+     // TODO: Add cookies here as needed
+     // Example:
+     // await context.addCookies([
+     //   { name: 'auth', value: 'token123', url: baseUrl },
+     // ]);
    }
    ```
 
-3. Create CLI entry point (`src/index.ts`):
-    - Use `commander` to define all parameters: `--base`, `--url`, `--compare-to`, `--viewport`, `--threshold`
-    - Validate the behavior matrix:
-        - At least one of `--base` or `--url` must be provided
-        - `--compare-to` requires `--url`
-        - `--viewport` must be one of: `desktop`, `tablet`, `mobile` (default: `desktop`)
-    - Load and parse `snap.json`
-    - Print parsed config and arguments to console (temporary, for verification)
+3. Wire up the `--base` flow in `src/index.ts`:
+    - When `--base` is provided: call capture with the base URL, save to `base/` folder
+    - Ensure the output directory structure is created (`output/<viewport>/base/`)
 
-4. Define viewport presets as a constant:
-   ```typescript
-   const VIEWPORTS = {
-     desktop: { width: 1920, height: 1080 },
-     tablet: { width: 768, height: 1024 },
-     mobile: { width: 375, height: 812 },
-   };
+4. Add console output for capture progress:
+   ```
+   Snap — capturing baseline (desktop)
+
+     ✓ homepage
+     ✓ about
+     ✓ products
+
+   Baseline saved: 3 pages
    ```
 
 ### Verify
 
 ```bash
-# Should print parsed args and config
-docker compose run snap --base http://example.com
-docker compose run snap --url http://example.com
-docker compose run snap --url http://example.com --compare-to http://prod.example.com
-docker compose run snap --url http://example.com --viewport mobile --threshold 3.5
+# Should create output/desktop/base/homepage.png
+docker compose run snap --base https://example.com
 
-# Should fail with validation error
-docker compose run snap
-docker compose run snap --compare-to http://example.com
-docker compose run snap --url http://example.com --viewport invalid
+# Check the file exists on host
+ls -la output/desktop/base/
+
+# Test mobile viewport
+docker compose run snap --base https://example.com --viewport mobile
+ls -la output/mobile/base/
 ```
