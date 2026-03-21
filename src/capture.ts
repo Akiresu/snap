@@ -9,6 +9,7 @@ export async function captureBaseline(
   baseUrl: string,
   viewport: ViewportName,
   onPageCaptured: (label: string) => void,
+  onPageFailed: (label: string, error: Error) => void,
 ): Promise<void> {
   const browser = await launchBrowser();
   try {
@@ -20,9 +21,13 @@ export async function captureBaseline(
 
     for (const page of config.pages) {
       const url = baseUrl + page.path;
-      const buffer = await navigateAndScreenshot(context, url);
-      await writeFile(path.join(outputDir, `${page.label}.png`), buffer);
-      onPageCaptured(page.label);
+      try {
+        const buffer = await navigateAndScreenshot(context, url);
+        await writeFile(path.join(outputDir, `${page.label}.png`), buffer);
+        onPageCaptured(page.label);
+      } catch (err) {
+        onPageFailed(page.label, err instanceof Error ? err : new Error(String(err)));
+      }
     }
   } finally {
     await browser.close();
@@ -34,6 +39,7 @@ export async function captureSnapshot(
   snapshotUrl: string,
   viewport: ViewportName,
   onPageCaptured: (label: string) => void,
+  onPageFailed: (label: string, error: Error) => void,
 ): Promise<void> {
   const browser = await launchBrowser();
   try {
@@ -45,9 +51,13 @@ export async function captureSnapshot(
 
     for (const page of config.pages) {
       const url = snapshotUrl + page.path;
-      const buffer = await navigateAndScreenshot(context, url);
-      await writeFile(path.join(outputDir, `${page.label}.png`), buffer);
-      onPageCaptured(page.label);
+      try {
+        const buffer = await navigateAndScreenshot(context, url);
+        await writeFile(path.join(outputDir, `${page.label}.png`), buffer);
+        onPageCaptured(page.label);
+      } catch (err) {
+        onPageFailed(page.label, err instanceof Error ? err : new Error(String(err)));
+      }
     }
   } finally {
     await browser.close();

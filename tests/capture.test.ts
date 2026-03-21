@@ -67,7 +67,7 @@ beforeEach(() => {
 
 describe('captureBaseline', () => {
   it('calls navigateAndScreenshot with correct full URLs', async () => {
-    await captureBaseline(config, 'https://example.com', 'desktop', () => {});
+    await captureBaseline(config, 'https://example.com', 'desktop', () => {}, vi.fn());
     expect(mockNavigateAndScreenshot).toHaveBeenCalledWith(mockContext, 'https://example.com/');
     expect(mockNavigateAndScreenshot).toHaveBeenCalledWith(mockContext, 'https://example.com/about');
   });
@@ -75,21 +75,21 @@ describe('captureBaseline', () => {
   it('calls writeFile with correct output paths', async () => {
     const buf = Buffer.from('png');
     mockNavigateAndScreenshot.mockResolvedValue(buf);
-    await captureBaseline(config, 'https://example.com', 'desktop', () => {});
+    await captureBaseline(config, 'https://example.com', 'desktop', () => {}, vi.fn());
     expect(mockWriteFile).toHaveBeenCalledWith(path.join('output', 'desktop', 'base', 'home.png'), buf);
     expect(mockWriteFile).toHaveBeenCalledWith(path.join('output', 'desktop', 'base', 'about.png'), buf);
   });
 
   it('calls onPageCaptured once per page with correct label', async () => {
     const cb = vi.fn();
-    await captureBaseline(config, 'https://example.com', 'desktop', cb);
+    await captureBaseline(config, 'https://example.com', 'desktop', cb, vi.fn());
     expect(cb).toHaveBeenCalledTimes(2);
     expect(cb).toHaveBeenCalledWith('home');
     expect(cb).toHaveBeenCalledWith('about');
   });
 
   it('calls mkdir with { recursive: true } before the loop', async () => {
-    await captureBaseline(config, 'https://example.com', 'mobile', () => {});
+    await captureBaseline(config, 'https://example.com', 'mobile', () => {}, vi.fn());
     expect(mockMkdir).toHaveBeenCalledWith(path.join('output', 'mobile', 'base'), { recursive: true });
     const mkdirOrder = mockMkdir.mock.invocationCallOrder[0];
     const navigateOrder = mockNavigateAndScreenshot.mock.invocationCallOrder[0];
@@ -97,23 +97,55 @@ describe('captureBaseline', () => {
   });
 
   it('calls setCookies before the page loop', async () => {
-    await captureBaseline(config, 'https://example.com', 'desktop', () => {});
+    await captureBaseline(config, 'https://example.com', 'desktop', () => {}, vi.fn());
     expect(mockSetCookies).toHaveBeenCalledWith(mockContext, 'https://example.com');
     const setCookiesOrder = mockSetCookies.mock.invocationCallOrder[0];
     const navigateOrder = mockNavigateAndScreenshot.mock.invocationCallOrder[0];
     expect(setCookiesOrder).toBeLessThan(navigateOrder);
   });
 
+  it('calls onPageFailed with label and error when navigateAndScreenshot rejects', async () => {
+    const err = new Error('net::ERR_CONNECTION_REFUSED');
+    mockNavigateAndScreenshot.mockRejectedValue(err);
+    const onPageFailed = vi.fn();
+    await captureBaseline(config, 'https://example.com', 'desktop', () => {}, onPageFailed);
+    expect(onPageFailed).toHaveBeenCalledWith('home', err);
+    expect(onPageFailed).toHaveBeenCalledWith('about', err);
+  });
+
+  it('continues capturing remaining pages after one fails', async () => {
+    const err = new Error('net::ERR_CONNECTION_REFUSED');
+    mockNavigateAndScreenshot
+      .mockRejectedValueOnce(err)
+      .mockResolvedValue(Buffer.from('png'));
+    const onPageCaptured = vi.fn();
+    const onPageFailed = vi.fn();
+    await captureBaseline(config, 'https://example.com', 'desktop', onPageCaptured, onPageFailed);
+    expect(onPageFailed).toHaveBeenCalledTimes(1);
+    expect(onPageFailed).toHaveBeenCalledWith('home', err);
+    expect(onPageCaptured).toHaveBeenCalledTimes(1);
+    expect(onPageCaptured).toHaveBeenCalledWith('about');
+  });
+
+  it('does not call writeFile for a failed page', async () => {
+    mockNavigateAndScreenshot
+      .mockRejectedValueOnce(new Error('failed'))
+      .mockResolvedValue(Buffer.from('png'));
+    await captureBaseline(config, 'https://example.com', 'desktop', () => {}, vi.fn());
+    expect(mockWriteFile).toHaveBeenCalledTimes(1);
+    expect(mockWriteFile).toHaveBeenCalledWith(path.join('output', 'desktop', 'base', 'about.png'), expect.any(Buffer));
+  });
+
   it('calls browser.close() even when navigateAndScreenshot throws', async () => {
     mockNavigateAndScreenshot.mockRejectedValue(new Error('capture failed'));
-    await expect(captureBaseline(config, 'https://example.com', 'desktop', () => {})).rejects.toThrow('capture failed');
+    await captureBaseline(config, 'https://example.com', 'desktop', () => {}, vi.fn());
     expect(mockBrowser.close).toHaveBeenCalledOnce();
   });
 });
 
 describe('captureSnapshot', () => {
   it('calls navigateAndScreenshot with correct full URLs', async () => {
-    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {});
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {}, vi.fn());
     expect(mockNavigateAndScreenshot).toHaveBeenCalledWith(mockContext, 'https://staging.example.com/');
     expect(mockNavigateAndScreenshot).toHaveBeenCalledWith(mockContext, 'https://staging.example.com/about');
   });
@@ -121,7 +153,7 @@ describe('captureSnapshot', () => {
   it('calls writeFile with correct snapshot output paths', async () => {
     const buf = Buffer.from('snap-png');
     mockNavigateAndScreenshot.mockResolvedValue(buf);
-    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {});
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {}, vi.fn());
     expect(mockWriteFile).toHaveBeenCalledWith(
       path.join('output', 'desktop', 'snapshot', 'home.png'),
       buf,
@@ -134,14 +166,14 @@ describe('captureSnapshot', () => {
 
   it('calls onPageCaptured once per page with correct label', async () => {
     const cb = vi.fn();
-    await captureSnapshot(config, 'https://staging.example.com', 'desktop', cb);
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', cb, vi.fn());
     expect(cb).toHaveBeenCalledTimes(2);
     expect(cb).toHaveBeenCalledWith('home');
     expect(cb).toHaveBeenCalledWith('about');
   });
 
   it('calls mkdir for the snapshot directory with { recursive: true }', async () => {
-    await captureSnapshot(config, 'https://staging.example.com', 'tablet', () => {});
+    await captureSnapshot(config, 'https://staging.example.com', 'tablet', () => {}, vi.fn());
     expect(mockMkdir).toHaveBeenCalledWith(
       path.join('output', 'tablet', 'snapshot'),
       { recursive: true },
@@ -152,18 +184,48 @@ describe('captureSnapshot', () => {
   });
 
   it('calls setCookies with the snapshot URL before the page loop', async () => {
-    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {});
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {}, vi.fn());
     expect(mockSetCookies).toHaveBeenCalledWith(mockContext, 'https://staging.example.com');
     const setCookiesOrder = mockSetCookies.mock.invocationCallOrder[0];
     const navigateOrder = mockNavigateAndScreenshot.mock.invocationCallOrder[0];
     expect(setCookiesOrder).toBeLessThan(navigateOrder);
   });
 
+  it('calls onPageFailed with label and error when navigateAndScreenshot rejects', async () => {
+    const err = new Error('net::ERR_CONNECTION_REFUSED');
+    mockNavigateAndScreenshot.mockRejectedValue(err);
+    const onPageFailed = vi.fn();
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {}, onPageFailed);
+    expect(onPageFailed).toHaveBeenCalledWith('home', err);
+    expect(onPageFailed).toHaveBeenCalledWith('about', err);
+  });
+
+  it('continues capturing remaining pages after one fails', async () => {
+    const err = new Error('net::ERR_CONNECTION_REFUSED');
+    mockNavigateAndScreenshot
+      .mockRejectedValueOnce(err)
+      .mockResolvedValue(Buffer.from('png'));
+    const onPageCaptured = vi.fn();
+    const onPageFailed = vi.fn();
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', onPageCaptured, onPageFailed);
+    expect(onPageFailed).toHaveBeenCalledTimes(1);
+    expect(onPageFailed).toHaveBeenCalledWith('home', err);
+    expect(onPageCaptured).toHaveBeenCalledTimes(1);
+    expect(onPageCaptured).toHaveBeenCalledWith('about');
+  });
+
+  it('does not call writeFile for a failed page', async () => {
+    mockNavigateAndScreenshot
+      .mockRejectedValueOnce(new Error('failed'))
+      .mockResolvedValue(Buffer.from('png'));
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {}, vi.fn());
+    expect(mockWriteFile).toHaveBeenCalledTimes(1);
+    expect(mockWriteFile).toHaveBeenCalledWith(path.join('output', 'desktop', 'snapshot', 'about.png'), expect.any(Buffer));
+  });
+
   it('calls browser.close() even when navigateAndScreenshot throws', async () => {
     mockNavigateAndScreenshot.mockRejectedValue(new Error('snapshot capture failed'));
-    await expect(
-      captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {}),
-    ).rejects.toThrow('snapshot capture failed');
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {}, vi.fn());
     expect(mockBrowser.close).toHaveBeenCalledOnce();
   });
 });

@@ -66,10 +66,22 @@ async function main(): Promise<void> {
 
   if (opts.base) {
     console.log(`\nSnap — capturing baseline (${viewport})\n`);
-    await captureBaseline(config, opts.base, viewport, (label) => {
-      console.log(`  ✓ ${label}`);
-    });
-    console.log(`\nBaseline saved: ${config.pages.length} pages`);
+    const failedPages: string[] = [];
+    await captureBaseline(
+      config,
+      opts.base,
+      viewport,
+      (label) => { console.log(`  ✓ ${label}`); },
+      (label, err) => {
+        console.error(`  ✗ ${label}  ${err.message}`);
+        failedPages.push(label);
+      },
+    );
+    const successCount = config.pages.length - failedPages.length;
+    console.log(`\nBaseline saved: ${successCount} of ${config.pages.length} pages`);
+    if (failedPages.length > 0) {
+      process.exit(1);
+    }
   }
 
   if (opts.url) {
@@ -82,9 +94,20 @@ async function main(): Promise<void> {
       console.log(`\nSnap — capturing baseline from ${opts.compareTo} (${viewport})\n`);
       await rm(baseDir, { recursive: true, force: true });
       await mkdir(baseDir, { recursive: true });
-      await captureBaseline(config, opts.compareTo, viewport, (label) => {
-        console.log(`  ✓ ${label}`);
-      });
+      const compareToFailed: string[] = [];
+      await captureBaseline(
+        config,
+        opts.compareTo,
+        viewport,
+        (label) => { console.log(`  ✓ ${label}`); },
+        (label, err) => {
+          console.error(`  ✗ ${label}  ${err.message}`);
+          compareToFailed.push(label);
+        },
+      );
+      if (compareToFailed.length > 0) {
+        process.exit(1);
+      }
     }
 
     // Clear and recreate snapshot/ and diff/
@@ -94,7 +117,13 @@ async function main(): Promise<void> {
     await mkdir(diffDir, { recursive: true });
 
     // Capture snapshots
-    await captureSnapshot(config, opts.url, viewport, () => {});
+    await captureSnapshot(
+      config,
+      opts.url,
+      viewport,
+      () => {},
+      (label, err) => { console.error(`  ✗ ${label}  ${err.message}`); },
+    );
 
     // Compare each page
     const results: PageCompareResult[] = [];

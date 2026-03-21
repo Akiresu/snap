@@ -186,6 +186,7 @@ describe('CLI orchestration', () => {
       'https://example.com',
       'desktop',
       expect.any(Function),
+      expect.any(Function),
     );
 
     expect(mockCaptureSnapshot).toHaveBeenCalledOnce();
@@ -193,6 +194,7 @@ describe('CLI orchestration', () => {
       expect.objectContaining({ pages: expect.any(Array) }),
       'https://staging.example.com',
       'desktop',
+      expect.any(Function),
       expect.any(Function),
     );
 
@@ -211,6 +213,7 @@ describe('CLI orchestration', () => {
       expect.objectContaining({ pages: expect.any(Array) }),
       'https://staging.example.com',
       'desktop',
+      expect.any(Function),
       expect.any(Function),
     );
   });
