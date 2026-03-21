@@ -28,3 +28,28 @@ export async function captureBaseline(
     await browser.close();
   }
 }
+
+export async function captureSnapshot(
+  config: SnapConfig,
+  snapshotUrl: string,
+  viewport: ViewportName,
+  onPageCaptured: (label: string) => void,
+): Promise<void> {
+  const browser = await launchBrowser();
+  try {
+    const context = await createContext(browser, viewport);
+    await setCookies(context, snapshotUrl);
+
+    const outputDir = path.join('output', viewport, OUTPUT_DIRS.snapshot);
+    await mkdir(outputDir, { recursive: true });
+
+    for (const page of config.pages) {
+      const url = snapshotUrl + page.path;
+      const buffer = await navigateAndScreenshot(context, url);
+      await writeFile(path.join(outputDir, `${page.label}.png`), buffer);
+      onPageCaptured(page.label);
+    }
+  } finally {
+    await browser.close();
+  }
+}

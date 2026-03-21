@@ -1,7 +1,11 @@
 import { Command } from 'commander';
+import { rm, mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { loadConfig } from './config.js';
-import { captureBaseline } from './capture.js';
-import { DEFAULT_THRESHOLD, DEFAULT_VIEWPORT, VIEWPORTS, type ViewportName } from './constants.js';
+import { captureBaseline, captureSnapshot } from './capture.js';
+import { compareImages, type PageCompareResult } from './compare.js';
+import { printResults, getExitCode } from './output.js';
+import { DEFAULT_THRESHOLD, DEFAULT_VIEWPORT, OUTPUT_DIRS, VIEWPORTS, type ViewportName } from './constants.js';
 
 const VALID_VIEWPORTS = Object.keys(VIEWPORTS) as ViewportName[];
 
@@ -66,6 +70,65 @@ async function main(): Promise<void> {
       console.log(`  ✓ ${label}`);
     });
     console.log(`\nBaseline saved: ${config.pages.length} pages`);
+  }
+
+  if (opts.url) {
+    const snapshotDir = path.join('output', viewport, OUTPUT_DIRS.snapshot);
+    const diffDir = path.join('output', viewport, OUTPUT_DIRS.diff);
+    const baseDir = path.join('output', viewport, OUTPUT_DIRS.base);
+
+    // If --compare-to is provided, capture a fresh baseline first
+    if (opts.compareTo) {
+      await captureBaseline(config, opts.compareTo, viewport, () => {});
+    }
+
+    // Clear and recreate snapshot/ and diff/
+    await rm(snapshotDir, { recursive: true, force: true });
+    await rm(diffDir, { recursive: true, force: true });
+    await mkdir(snapshotDir, { recursive: true });
+    await mkdir(diffDir, { recursive: true });
+
+    // Capture snapshots
+    await captureSnapshot(config, opts.url, viewport, () => {});
+
+    // Compare each page
+    const results: PageCompareResult[] = [];
+    for (const page of config.pages) {
+      const basePath = path.join(baseDir, `${page.label}.png`);
+      const snapshotPath = path.join(snapshotDir, `${page.label}.png`);
+
+      let baseBuffer: Buffer | null = null;
+      try {
+        baseBuffer = await readFile(basePath);
+      } catch {
+        // baseline missing — fall through to skipped result
+      }
+
+      if (baseBuffer === null) {
+        results.push({ label: page.label, percentage: 0, pass: true, skipped: true });
+        continue;
+      }
+
+      let snapshotBuffer: Buffer;
+      try {
+        snapshotBuffer = await readFile(snapshotPath);
+      } catch {
+        // snapshot file missing (capture failed for this page) — treat as 100% fail
+        results.push({ label: page.label, percentage: 100, pass: false, skipped: false });
+        continue;
+      }
+      const { percentage, diffBuffer } = compareImages(baseBuffer, snapshotBuffer);
+      const pass = percentage <= threshold;
+
+      if (!pass) {
+        await writeFile(path.join(diffDir, `${page.label}.png`), diffBuffer);
+      }
+
+      results.push({ label: page.label, percentage, pass, skipped: false });
+    }
+
+    printResults(results, threshold);
+    process.exit(getExitCode(results));
   }
 }
 
