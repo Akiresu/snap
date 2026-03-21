@@ -43,7 +43,7 @@ vi.mock('node:fs/promises', () => ({
   writeFile: mockWriteFile,
 }));
 
-import { captureBaseline } from '../src/capture.js';
+import { captureBaseline, captureSnapshot } from '../src/capture.js';
 import type { SnapConfig } from '../src/config.js';
 
 const config: SnapConfig = {
@@ -107,6 +107,63 @@ describe('captureBaseline', () => {
   it('calls browser.close() even when navigateAndScreenshot throws', async () => {
     mockNavigateAndScreenshot.mockRejectedValue(new Error('capture failed'));
     await expect(captureBaseline(config, 'https://example.com', 'desktop', () => {})).rejects.toThrow('capture failed');
+    expect(mockBrowser.close).toHaveBeenCalledOnce();
+  });
+});
+
+describe('captureSnapshot', () => {
+  it('calls navigateAndScreenshot with correct full URLs', async () => {
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {});
+    expect(mockNavigateAndScreenshot).toHaveBeenCalledWith(mockContext, 'https://staging.example.com/');
+    expect(mockNavigateAndScreenshot).toHaveBeenCalledWith(mockContext, 'https://staging.example.com/about');
+  });
+
+  it('calls writeFile with correct snapshot output paths', async () => {
+    const buf = Buffer.from('snap-png');
+    mockNavigateAndScreenshot.mockResolvedValue(buf);
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {});
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      path.join('output', 'desktop', 'snapshot', 'home.png'),
+      buf,
+    );
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      path.join('output', 'desktop', 'snapshot', 'about.png'),
+      buf,
+    );
+  });
+
+  it('calls onPageCaptured once per page with correct label', async () => {
+    const cb = vi.fn();
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', cb);
+    expect(cb).toHaveBeenCalledTimes(2);
+    expect(cb).toHaveBeenCalledWith('home');
+    expect(cb).toHaveBeenCalledWith('about');
+  });
+
+  it('calls mkdir for the snapshot directory with { recursive: true }', async () => {
+    await captureSnapshot(config, 'https://staging.example.com', 'tablet', () => {});
+    expect(mockMkdir).toHaveBeenCalledWith(
+      path.join('output', 'tablet', 'snapshot'),
+      { recursive: true },
+    );
+    const mkdirOrder = mockMkdir.mock.invocationCallOrder[0];
+    const navigateOrder = mockNavigateAndScreenshot.mock.invocationCallOrder[0];
+    expect(mkdirOrder).toBeLessThan(navigateOrder);
+  });
+
+  it('calls setCookies with the snapshot URL before the page loop', async () => {
+    await captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {});
+    expect(mockSetCookies).toHaveBeenCalledWith(mockContext, 'https://staging.example.com');
+    const setCookiesOrder = mockSetCookies.mock.invocationCallOrder[0];
+    const navigateOrder = mockNavigateAndScreenshot.mock.invocationCallOrder[0];
+    expect(setCookiesOrder).toBeLessThan(navigateOrder);
+  });
+
+  it('calls browser.close() even when navigateAndScreenshot throws', async () => {
+    mockNavigateAndScreenshot.mockRejectedValue(new Error('snapshot capture failed'));
+    await expect(
+      captureSnapshot(config, 'https://staging.example.com', 'desktop', () => {}),
+    ).rejects.toThrow('snapshot capture failed');
     expect(mockBrowser.close).toHaveBeenCalledOnce();
   });
 });

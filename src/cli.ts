@@ -79,7 +79,12 @@ async function main(): Promise<void> {
 
     // If --compare-to is provided, capture a fresh baseline first
     if (opts.compareTo) {
-      await captureBaseline(config, opts.compareTo, viewport, () => {});
+      console.log(`\nSnap — capturing baseline from ${opts.compareTo} (${viewport})\n`);
+      await rm(baseDir, { recursive: true, force: true });
+      await mkdir(baseDir, { recursive: true });
+      await captureBaseline(config, opts.compareTo, viewport, (label) => {
+        console.log(`  ✓ ${label}`);
+      });
     }
 
     // Clear and recreate snapshot/ and diff/

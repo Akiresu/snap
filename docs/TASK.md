@@ -1,58 +1,42 @@
 # Snap — Implementation Tasks
 
-## Phase 3 — Comparison & Diff
+## Phase 4 — Cross-Environment Comparison
 
-**Goal**: `--url` mode captures snapshots and compares them against existing baseline with pixelmatch. Console shows pass/fail. Diff images generated for failures.
+**Goal**: `--url` + `--compare-to` mode captures fresh baseline from one URL and snapshots from another in a single command.
 
 ### Prerequisites
-- Phase 2 complete, baseline screenshots exist in `output/<viewport>/base/`
+- Phase 3 complete and comparison logic working
 
 ### Steps
 
-1. Create `src/compare.ts` — comparison module:
-    - For each page label, load `base/<label>.png` and `snapshot/<label>.png` using `pngjs`
-    - Handle size mismatches: if dimensions differ, report as fail (100% diff) and skip pixelmatch
-    - Run `pixelmatch` to get the number of differing pixels and the diff image buffer
-    - Calculate percentage: `(diffPixels / totalPixels) * 100`
-    - If percentage > threshold: save diff image to `diff/<label>.png`, mark as FAIL
-    - If baseline image missing for a page: report as WARNING/SKIP (not a failure)
-    - Return structured results per page: `{ label, percentage, pass, skipped }`
+1. Wire up the `--url` + `--compare-to` flow in `src/index.ts`:
+    - Capture baseline from `--compare-to` URL into `base/` (overwrites existing)
+    - Capture snapshots from `--url` into `snapshot/`
+    - Run comparison (reuse existing compare module)
+    - Same console output and exit codes as Phase 3
 
-2. Wire up the `--url` flow in `src/index.ts`:
-    - Capture screenshots from `--url` into `snapshot/` folder (reuse capture module from Phase 2)
-    - Clear `snapshot/` and `diff/` folders before each run
-    - Run comparison against `base/`
-    - Print results to console
-
-3. Console output format:
-   ```
-   Snap — comparing against baseline (threshold: 5.0%)
-
-     ✓ homepage .............. 0.3%
-     ✓ about ................. 1.2%
-     ✗ products .............. 8.7%  → diff saved
-     ⚠ contact ............... no baseline
-
-   Result: 1 of 4 pages failed
-   ```
-
-4. Exit codes:
-    - `0` — all pages pass (warnings are OK)
-    - `1` — any page fails
+   This should require minimal new code — just orchestrating the existing capture and compare functions in sequence.
 
 ### Verify
 
 ```bash
-# First, capture baseline
-docker compose run snap --base https://example.com
+# Compare two different sites in one command
+docker compose run snap --url https://staging.example.com --compare-to https://example.com
 
-# Compare same site — should all pass with ~0% diff
-docker compose run snap --url https://example.com
-
-# Verify exit code
-echo $?  # should be 0
-
-# Check that snapshot/ has images but diff/ is empty (no failures)
-ls output/desktop/snapshot/
+# Should see diffs if the sites differ
 ls output/desktop/diff/
+
+# Verify baseline was updated from --compare-to
+ls output/desktop/base/
 ```
+
+---
+
+## Notes for Claude Code
+
+- All development and testing happens inside Docker. Do not install Node.js, Playwright, or browsers on the host/WSL.
+- The `output/` folder is shared via volume mount — screenshots must be accessible from the host filesystem.
+- Keep the code simple and flat. Minimal abstraction. This is a dev tool, not a framework.
+- Use `async/await` throughout. No callbacks.
+- Handle errors gracefully but simply — `console.error` and `process.exit(1)` is fine.
+- Each source file should have a single clear responsibility: `index.ts` (CLI + orchestration), `capture.ts` (Playwright screenshots), `compare.ts` (pixelmatch diffing), `cookies.ts` (placeholder).
