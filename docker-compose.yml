@@ -1,0 +1,83 @@
+# =============================================================================
+# Snap — Docker Compose (Development)
+# =============================================================================
+#
+# Usage:
+#   docker compose up -d                                             Start
+#   docker compose exec snap bash                                    Shell
+#   docker compose down                                              Stop
+#
+# Claude Code (from WSL):
+#   docker compose exec snap npm install
+#   docker compose exec snap npm test
+#   docker compose exec snap npm run crawl
+#   docker compose exec snap npx playwright test
+#
+# =============================================================================
+
+services:
+  snap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: snap-dev
+    init: true               # Proper PID 1 handling, avoids zombie processes
+
+    # -------------------------------------------------------------------------
+    # NETWORK: host mode for full VPN/LAN/localhost access
+    # -------------------------------------------------------------------------
+    # VPN runs on Windows, WSL2 routes through it. Host networking gives the
+    # container the same network view as WSL — VPN hosts, localhost, and LAN
+    # are all reachable without extra config.
+    # -------------------------------------------------------------------------
+    network_mode: host
+
+    # -------------------------------------------------------------------------
+    # SHARED MEMORY: required for Chromium stability under parallel load
+    # -------------------------------------------------------------------------
+    ipc: host
+
+    # -------------------------------------------------------------------------
+    # SECURITY: Chromium sandbox support
+    # -------------------------------------------------------------------------
+    cap_add:
+      - SYS_ADMIN
+
+    # -------------------------------------------------------------------------
+    # VOLUMES
+    # -------------------------------------------------------------------------
+    # Single bind mount maps the entire project. Subdirectories data/,
+    # reports/, and exports/ are created by the application on first run
+    # and are visible on the WSL filesystem.
+    # -------------------------------------------------------------------------
+    volumes:
+      # Project root → /app (includes source, config, data, reports, exports)
+      - ./:/app
+
+      # node_modules cache — persist across container rebuilds
+      - node-modules:/app/node_modules
+
+    # -------------------------------------------------------------------------
+    # ENVIRONMENT
+    # -------------------------------------------------------------------------
+    environment:
+      - NODE_ENV=development
+
+      # Playwright — browsers are pre-installed in the image
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+      # Timezone
+      - TZ=Europe/Prague
+
+    # -------------------------------------------------------------------------
+    # RESOURCE LIMITS
+    # -------------------------------------------------------------------------
+    # Each parallel Chromium instance uses ~200-500MB. With 4 workers,
+    # 4GB is a reasonable ceiling. Increase if running more workers.
+    # -------------------------------------------------------------------------
+    mem_limit: 4g
+    mem_reservation: 1g
+
+volumes:
+  node-modules:
+    driver: local
