@@ -78,6 +78,16 @@ services:
     mem_limit: 4g
     mem_reservation: 1g
 
+    # -------------------------------------------------------------------------
+    # ROUTING FOR LOCAL HOSTNAMES
+    # -------------------------------------------------------------------------
+    # Allows localhost-cz, localhost-sk, and localhost-pl to be resolved
+    # -------------------------------------------------------------------------
+    extra_hosts:
+      - "localhost-cz:192.168.176.1"
+      - "localhost-sk:192.168.176.1"
+      - "localhost-pl:192.168.176.1"
+
 volumes:
   node-modules:
     driver: local
