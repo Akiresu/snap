@@ -1,7 +1,7 @@
 import type { PageCompareResult } from './compare.js';
 
 export function printResults(results: PageCompareResult[], threshold: number): void {
-  console.log(`\nSnap — comparing against baseline (threshold: ${threshold.toFixed(1)}%)\n`);
+  console.log(`\nSnap — comparing against baseline (diff threshold: ${threshold.toFixed(1)}%)\n`);
 
   for (const result of results) {
     const dots = '.'.repeat(Math.max(3, 22 - result.label.length));
@@ -9,9 +9,9 @@ export function printResults(results: PageCompareResult[], threshold: number): v
     if (result.skipped) {
       console.log(`  ⚠ ${result.label} ${dots} no baseline`);
     } else if (result.pass) {
-      console.log(`  ✓ ${result.label} ${dots} ${result.percentage.toFixed(1)}%`);
+      console.log(`  ✓ ${result.label} ${dots} ${(100 - result.percentage).toFixed(1)}% match`);
     } else {
-      console.log(`  ✗ ${result.label} ${dots} ${result.percentage.toFixed(1)}%  → diff saved`);
+      console.log(`  ✗ ${result.label} ${dots} ${(100 - result.percentage).toFixed(1)}% match  → diff saved`);
     }
   }
 

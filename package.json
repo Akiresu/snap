@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "build:cli": "esbuild src/cli.ts --bundle --minify --platform=node --target=node20 --outfile=dist/snap.js --banner:js='#!/usr/bin/env node' --external:playwright --external:playwright-core --external:chromium-bidi",
     "test": "vitest run",
     "snap": "node dist/cli.js"
   },
@@ -14,9 +15,13 @@
     "pngjs": "7.0.0",
     "zod": "3.24.2"
   },
+  "bin": {
+    "snap": "dist/snap.js"
+  },
   "devDependencies": {
     "@types/pngjs": "6.0.5",
     "typescript": "5.8.2",
-    "vitest": "3.0.5"
+    "vitest": "3.0.5",
+    "esbuild": "^0.25.0"
   }
 }

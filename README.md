@@ -116,7 +116,6 @@ docker compose up -d --build       # Rebuild after Dockerfile changes
 snap/
 ├── snap.json              # Active config (gitignored)
 ├── snap.example.json      # Config template
-├── docs/SPEC.md           # Full requirements specification
 ├── output/                # Screenshots and diffs (runtime, gitignored)
 └── src/                   # Application source
 ```
@@ -129,5 +128,4 @@ snap/
 
 ## Documentation
 
-- [Requirements Specification](docs/SPEC.md)
 - [Claude Code Guide](CLAUDE.md)

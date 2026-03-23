@@ -1,0 +1,58 @@
+name: Build CLI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build bundled CLI
+        run: |
+          npx esbuild src/cli.ts \
+            --bundle \
+            --minify \
+            --platform=node \
+            --target=node20 \
+            --outfile=dist/snap.js \
+            --banner:js='#!/usr/bin/env node' \
+            --external:playwright \
+            --external:playwright-core \
+            --external:chromium-bidi
+
+      - name: Make CLI executable
+        run: chmod +x dist/snap.js
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-cli
+          path: dist/snap.js
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach file to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/snap.js

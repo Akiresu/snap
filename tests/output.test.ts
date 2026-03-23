@@ -62,7 +62,7 @@ describe('printResults', () => {
     const allOutput = logSpy.mock.calls.flat().join('\n');
     expect(allOutput).toContain('✓');
     expect(allOutput).toContain('homepage');
-    expect(allOutput).toContain('0.3%');
+    expect(allOutput).toContain('99.7% match');
   });
 
   it('prints failing pages with ✗ icon, percentage, and "→ diff saved"', () => {
@@ -73,7 +73,7 @@ describe('printResults', () => {
     const allOutput = logSpy.mock.calls.flat().join('\n');
     expect(allOutput).toContain('✗');
     expect(allOutput).toContain('products');
-    expect(allOutput).toContain('8.7%');
+    expect(allOutput).toContain('91.3% match');
     expect(allOutput).toContain('→ diff saved');
   });
 
