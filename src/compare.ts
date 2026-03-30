@@ -17,25 +17,42 @@ export function compareImages(base: Buffer, snapshot: Buffer): CompareImageResul
   const basePng = PNG.sync.read(base);
   const snapshotPng = PNG.sync.read(snapshot);
 
-  if (basePng.width !== snapshotPng.width || basePng.height !== snapshotPng.height) {
-    const emptyPng = new PNG({ width: basePng.width, height: basePng.height });
-    return {
-      percentage: 100,
-      diffBuffer: Buffer.from(PNG.sync.write(emptyPng)),
-    };
-  }
+  const width = Math.max(basePng.width, snapshotPng.width);
+  const height = Math.max(basePng.height, snapshotPng.height);
 
-  const { width, height } = basePng;
-  const diffPng = new PNG({ width, height });
+  const normalizedBase = new PNG({width, height});
+  const normalizedSnapshot = new PNG({width, height});
+
+  const diffPng = new PNG({width, height});
+
+  PNG.bitblt(basePng,
+      normalizedBase,
+      0,
+      0,
+      basePng.width,
+      basePng.height,
+      0,
+      0
+  );
+
+  PNG.bitblt(snapshotPng,
+      normalizedSnapshot,
+      0,
+      0,
+      snapshotPng.width,
+      snapshotPng.height,
+      0,
+      0
+  );
 
   const diffPixels = pixelmatch(
-    basePng.data,
-    snapshotPng.data,
+    normalizedBase.data,
+    normalizedSnapshot.data,
     diffPng.data,
     width,
     height,
     { threshold: 0.1 },
-  );
+  ) as number;
 
   const percentage = (diffPixels / (width * height)) * 100;
 
