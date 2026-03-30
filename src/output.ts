@@ -9,7 +9,11 @@ export function printResults(results: PageCompareResult[], threshold: number): v
     if (result.skipped) {
       console.log(`  ⚠ ${result.label} ${dots} no baseline`);
     } else if (result.pass) {
-      console.log(`  ✓ ${result.label} ${dots} ${(100 - result.percentage).toFixed(1)}% match`);
+      if (result.percentage > 0) {
+        console.log(`  ✓ ${result.label} ${dots} ${(100 - result.percentage).toFixed(1)}% match  → diff saved`);
+      } else {
+        console.log(`  ✓ ${result.label} ${dots} ${(100 - result.percentage).toFixed(1)}% match`);
+      }
     } else {
       console.log(`  ✗ ${result.label} ${dots} ${(100 - result.percentage).toFixed(1)}% match  → diff saved`);
     }

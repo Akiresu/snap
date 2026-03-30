@@ -152,7 +152,7 @@ async function main(): Promise<void> {
       const { percentage, diffBuffer } = compareImages(baseBuffer, snapshotBuffer);
       const pass = percentage <= threshold;
 
-      if (!pass) {
+      if (percentage > 0) {
         await writeFile(path.join(diffDir, `${page.label}.png`), diffBuffer);
       }
 
