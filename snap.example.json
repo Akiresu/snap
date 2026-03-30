@@ -3,6 +3,7 @@
     { "path": "/", "label": "homepage" }
   ],
   "defaultThreshold": 5.0,
+  "readySelector": "footer",
   "cookies": [
     {
       "name": "session_id",

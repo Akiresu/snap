@@ -20,6 +20,7 @@ const SnapConfigSchema = z.object({
   pages: z.array(PageSchema).min(1),
   defaultThreshold: z.number(),
   cookies: z.array(CookieSchema).optional(),
+  readySelector: z.string().optional(),
 });
 
 export type SnapConfig = z.infer<typeof SnapConfigSchema>;

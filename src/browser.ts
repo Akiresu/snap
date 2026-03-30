@@ -1,4 +1,5 @@
 import { chromium, Browser, BrowserContext } from 'playwright';
+import assert from 'node:assert';
 import { VIEWPORTS, type ViewportName } from './constants.js';
 import { type SnapConfig } from './config.js';
 
@@ -29,10 +30,16 @@ export async function setCookies(context: BrowserContext, baseUrl: string, cooki
   await context.addCookies(processedCookies as Parameters<typeof context.addCookies>[0]);
 }
 
-export async function navigateAndScreenshot(context: BrowserContext, url: string): Promise<Buffer> {
+export async function navigateAndScreenshot(context: BrowserContext, url: string, readySelector?: string): Promise<Buffer> {
   const page = await context.newPage();
   try {
-    await page.goto(url, { waitUntil: 'networkidle' });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    
+    // If readySelector is provided, wait for it to be visible
+    if (readySelector) {
+      assert.ok(await page.locator(readySelector).isVisible());
+    }
+
     const buffer = await page.screenshot({ fullPage: true });
     return buffer;
   } finally {

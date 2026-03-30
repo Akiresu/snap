@@ -22,7 +22,7 @@ export async function captureBaseline(
     await Promise.all(config.pages.map(async (page) => {
       const url = baseUrl + page.path;
       try {
-        const buffer = await navigateAndScreenshot(context, url);
+        const buffer = await navigateAndScreenshot(context, url, config.readySelector);
         await writeFile(path.join(outputDir, `${page.label}.png`), buffer);
         onPageCaptured(page.label);
       } catch (err) {
@@ -52,7 +52,7 @@ export async function captureSnapshot(
     await Promise.all(config.pages.map(async (page) => {
       const url = snapshotUrl + page.path;
       try {
-        const buffer = await navigateAndScreenshot(context, url);
+        const buffer = await navigateAndScreenshot(context, url, config.readySelector);
         await writeFile(path.join(outputDir, `${page.label}.png`), buffer);
         onPageCaptured(page.label);
       } catch (err) {
