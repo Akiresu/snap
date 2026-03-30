@@ -6,9 +6,20 @@ const PageSchema = z.object({
   label: z.string(),
 });
 
+const CookieSchema = z.object({
+  name: z.string(),
+  value: z.string(),
+  domain: z.string().optional(),
+  path: z.string().optional(),
+  httpOnly: z.boolean().optional(),
+  secure: z.boolean().optional(),
+  sameSite: z.enum(['Strict', 'Lax', 'None']).optional(),
+});
+
 const SnapConfigSchema = z.object({
   pages: z.array(PageSchema).min(1),
   defaultThreshold: z.number(),
+  cookies: z.array(CookieSchema).optional(),
 });
 
 export type SnapConfig = z.infer<typeof SnapConfigSchema>;

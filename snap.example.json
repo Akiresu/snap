@@ -2,5 +2,20 @@
   "pages": [
     { "path": "/", "label": "homepage" }
   ],
-  "defaultThreshold": 5.0
+  "defaultThreshold": 5.0,
+  "cookies": [
+    {
+      "name": "session_id",
+      "value": "abc123xyz789"
+    },
+    {
+      "name": "auth_token",
+      "value": "your-auth-token-here",
+      "domain": "example.com",
+      "path": "/",
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Strict"
+    }
+  ]
 }

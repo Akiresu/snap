@@ -14,7 +14,7 @@ export async function captureBaseline(
   const browser = await launchBrowser();
   try {
     const context = await createContext(browser, viewport);
-    await setCookies(context, baseUrl);
+    await setCookies(context, baseUrl, config.cookies);
 
     const outputDir = path.join('output', viewport, OUTPUT_DIRS.base);
     await mkdir(outputDir, { recursive: true });
@@ -44,7 +44,7 @@ export async function captureSnapshot(
   const browser = await launchBrowser();
   try {
     const context = await createContext(browser, viewport);
-    await setCookies(context, snapshotUrl);
+    await setCookies(context, snapshotUrl, config.cookies);
 
     const outputDir = path.join('output', viewport, OUTPUT_DIRS.snapshot);
     await mkdir(outputDir, { recursive: true });
